@@ -3,10 +3,17 @@ name = "scara"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "Eric Busboom", email = "eric@busboom.org" }
+]
 requires-python = ">=3.12"
 dependencies = [
-    "ikpy>=3.4.2",
-    "ipykernel>=6.29.5",
-    "roboticstoolbox-python>=1.1.1",
-    "spatialmath-python>=1.1.14",
+    "pyserial>=3.5",
 ]
+
+[project.scripts]
+scara = "scara:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
