@@ -1,0 +1,12 @@
+[project]
+name = "scara"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ikpy>=3.4.2",
+    "ipykernel>=6.29.5",
+    "roboticstoolbox-python>=1.1.1",
+    "spatialmath-python>=1.1.14",
+]
