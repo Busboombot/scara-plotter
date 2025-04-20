@@ -3,12 +3,17 @@ import serial
 
 import struct
 
+from sympy import E
+
 
 
 class PTServo:
     def __init__(self, serial_port, baud_rate):
         self.x = None
         self.y = None
+        self.px = None
+        self.py = None
+        self.ready = False
         self.last_response = None
         
         self.ser = serial.Serial(serial_port, baud_rate)
@@ -39,9 +44,10 @@ class PTServoArduino(PTServo):
         for i in range(10):
 
             r = self.get_status().strip()
-            if r == 'ready.':
-                break
             print(r)
+            if self.ready:
+                break
+            
             time.sleep(1)
         else:
             raise Exception("Could not connect to Arduino")
@@ -75,10 +81,12 @@ class PTServoArduino(PTServo):
         # Convert angles to 32-bit integers
         
         def ca(a):
-            v =  int( (a+180) * 10000) 
+            # The +180 make all values we send positive, so zero can be a special 
+            # marker, and we can still send negative values for relative moves
+            v =  int( (a+180) * 100) 
             
             if (v == 0):
-                v = 1
+                v = 1 # Keep zero special 
         
             return v
         
@@ -86,6 +94,9 @@ class PTServoArduino(PTServo):
         angle2 = ca(angle2)
         
         assert code != 0, "Code cannot be 0"
+        
+        #if chr(code) != '?':
+        #    print(f"Sending angles: {angle1}, {angle2} with code {chr(code)}")
         
         data = struct.pack('<iiBB', angle1, angle2, code, 0)
   
@@ -96,14 +107,24 @@ class PTServoArduino(PTServo):
         o = ""
         while self.ser.in_waiting > 0:
             o += self.ser.read(self.ser.in_waiting).decode()
-           
          
         lines = []
         for line in o.split('\n'):
             if line.startswith('pos:'):
-                _, x, y = line.split()
-                self.x = round(float(x), 1)
-                self.y = round(float(y), 1)
+                try:
+                    _, x, y, self.px, self.py = line.split()
+                    self.x = round(float(x), 1)
+                    self.y = round(float(y), 1)
+                    continue
+                except Exception: 
+                    print("Error parsing line:", line)
+                    continue
+              
+            elif line.startswith('ready'):
+                self.ready = True
+                continue
+        
+            
             lines.append(line)
         
         self.last_response = '\n'.join(lines)
