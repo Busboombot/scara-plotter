@@ -38,6 +38,8 @@ class PTServoMB(PTServo):
 
 class PTServoArduino(PTServo):
 
+    angle_scale = 100 # Scaling factor for angles, b/c we can't parse floats wiith sscanf
+    
     def __init__(self, serial_port, baud_rate):
         super().__init__(serial_port, baud_rate)
         
@@ -54,17 +56,23 @@ class PTServoArduino(PTServo):
 
     def check_status(self):
         
-        self.send_angles(ord('?'), 0, 0)
+        self.send_angles('?', 0, 0)
         time.sleep(0.1)
         return self.get_status()
 
     def move_a(self, x, y):
         
-        self.send_angles(ord('a'), x, y)
+        self.send_angles('a', x, y)
         
     def move_r(self, x, y):
         
-        self.send_angles(ord('r'), x, y)
+        self.send_angles('r', x, y)
+
+
+    def make_command(self, code: int, angle1: float, angle2: float):
+        
+       return f"c: {code} {angle1} {angle2}\n"
+   
 
     def send_angles(self, code: int, angle1 : float, angle2: float ):
         """
@@ -80,26 +88,9 @@ class PTServoArduino(PTServo):
         """
         # Convert angles to 32-bit integers
         
-        def ca(a):
-            # The +180 make all values we send positive, so zero can be a special 
-            # marker, and we can still send negative values for relative moves
-            v =  int( (a+180) * 100) 
-            
-            if (v == 0):
-                v = 1 # Keep zero special 
+        data = self.make_command(code, int(angle1*self.angle_scale), 
+                                 int(angle2*self.angle_scale)).encode()
         
-            return v
-        
-        angle1 = ca(angle1)
-        angle2 = ca(angle2)
-        
-        assert code != 0, "Code cannot be 0"
-        
-        #if chr(code) != '?':
-        #    print(f"Sending angles: {angle1}, {angle2} with code {chr(code)}")
-        
-        data = struct.pack('<iiBB', angle1, angle2, code, 0)
-  
         self.ser.write(data)
 
         
@@ -120,9 +111,10 @@ class PTServoArduino(PTServo):
                     print("Error parsing line:", line)
                     continue
               
-            elif line.startswith('ready'):
+            elif line.startswith('ready') or line.startswith('start'):
                 self.ready = True
                 continue
+                
         
             
             lines.append(line)
